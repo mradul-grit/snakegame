@@ -26,7 +26,15 @@ public class GamePanel extends JPanel implements ActionListener {
     Timer timer;
     Random random;
 
+    final GameClient client;
+    boolean deadReported = false;
+
     GamePanel() {
+        this(null);
+    }
+
+    GamePanel(GameClient client) {
+        this.client = client;
         random = new Random();
         setPreferredSize(new Dimension(SCREEN_WIDTH, SCREEN_HEIGHT));
         setBackground(Color.black);
@@ -39,6 +47,7 @@ public class GamePanel extends JPanel implements ActionListener {
         bodyParts = 6;
         applesEaten = 0;
         direction = 'R';
+        deadReported = false;
         for (int i = 0; i < bodyParts; i++) {
             x[i] = 100 - i * UNIT_SIZE;
             y[i] = 100;
@@ -110,6 +119,9 @@ public class GamePanel extends JPanel implements ActionListener {
             bodyParts++;
             applesEaten++;
             newApple();
+            if (client != null) {
+                client.sendScore(applesEaten);
+            }
         }
     }
 
@@ -126,6 +138,10 @@ public class GamePanel extends JPanel implements ActionListener {
 
         if (!running) {
             timer.stop();
+            if (client != null && !deadReported) {
+                deadReported = true;
+                client.sendDead(applesEaten);
+            }
         }
     }
 
@@ -142,9 +158,9 @@ public class GamePanel extends JPanel implements ActionListener {
                 (SCREEN_WIDTH - metrics2.stringWidth("Score: " + applesEaten)) / 2, g.getFont().getSize());
 
         g.setFont(new Font("Ink Free", Font.PLAIN, 18));
+        String hint = client == null ? "Press SPACE to restart" : "Waiting for other players to finish...";
         FontMetrics metrics3 = getFontMetrics(g.getFont());
-        g.drawString("Press SPACE to restart",
-                (SCREEN_WIDTH - metrics3.stringWidth("Press SPACE to restart")) / 2, SCREEN_HEIGHT / 2 + 50);
+        g.drawString(hint, (SCREEN_WIDTH - metrics3.stringWidth(hint)) / 2, SCREEN_HEIGHT / 2 + 50);
     }
 
     @Override
@@ -174,7 +190,7 @@ public class GamePanel extends JPanel implements ActionListener {
                     if (direction != 'U') direction = 'D';
                     break;
                 case KeyEvent.VK_SPACE:
-                    if (!running) {
+                    if (!running && client == null) {
                         startGame();
                     }
                     break;
